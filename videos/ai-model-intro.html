@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#06060c">
+    <title>Neural layer</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            height: 100%;
+            background: #06060c;
+            overflow: hidden;
+        }
+
+        #c {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .vignette {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background: radial-gradient(ellipse 78% 68% at 50% 46%, transparent 0%, rgba(6, 6, 12, 0.45) 100%);
+        }
+
+        .noise {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            opacity: 0.04;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="c" aria-hidden="true"></canvas>
+    <div class="noise" aria-hidden="true"></div>
+    <div class="vignette" aria-hidden="true"></div>
+    <script>
+        (function () {
+            const canvas = document.getElementById('c');
+            const ctx = canvas.getContext('2d');
+
+            let W, H, dpr;
+            let nodes = [];
+            let edges = [];
+            let packets = [];
+            let pulseT = 0;
+            const t0 = performance.now();
+
+            const LAYERS = [
+                { n: 7, x: 0.1 },
+                { n: 11, x: 0.36 },
+                { n: 10, x: 0.64 },
+                { n: 5, x: 0.9 }
+            ];
+
+            function buildGraph() {
+                nodes = [];
+                edges = [];
+                packets = [];
+                LAYERS.forEach((layer, li) => {
+                    for (let i = 0; i < layer.n; i++) {
+                        const y = 0.1 + (i + 0.5) / layer.n * 0.78;
+                        nodes.push({
+                            x: layer.x * W + (Math.random() - 0.5) * 14,
+                            y: y * H + (Math.random() - 0.5) * 10,
+                            layer: li,
+                            phase: Math.random() * Math.PI * 2
+                        });
+                    }
+                });
+                for (let i = 0; i < nodes.length; i++) {
+                    if (nodes[i].layer >= LAYERS.length - 1) continue;
+                    const candidates = nodes
+                        .map((n, j) => ({ n, j }))
+                        .filter(o => o.n.layer === nodes[i].layer + 1);
+                    candidates.sort(() => Math.random() - 0.5);
+                    const pick = Math.min(3 + Math.floor(Math.random() * 3), candidates.length);
+                    for (let k = 0; k < pick; k++) {
+                        edges.push({ a: i, b: candidates[k].j, w: Math.random() });
+                    }
+                }
+                if (edges.length) {
+                    const nPack = Math.min(28, Math.max(10, Math.floor(edges.length * 0.35)));
+                    for (let p = 0; p < nPack; p++) {
+                        packets.push({
+                            edge: Math.floor(Math.random() * edges.length),
+                            t: Math.random(),
+                            speed: 0.12 + Math.random() * 0.22
+                        });
+                    }
+                }
+            }
+
+            function resize() {
+                dpr = Math.min(window.devicePixelRatio || 1, 2);
+                W = canvas.clientWidth;
+                H = canvas.clientHeight;
+                if (W < 2 || H < 2) return;
+                canvas.width = Math.floor(W * dpr);
+                canvas.height = Math.floor(H * dpr);
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                buildGraph();
+            }
+
+            window.addEventListener('resize', resize);
+            resize();
+
+            function drawGrid(elapsed) {
+                ctx.save();
+                ctx.strokeStyle = 'rgba(45, 212, 255, 0.035)';
+                ctx.lineWidth = 1;
+                const step = 36;
+                const off = (elapsed * 18) % step;
+                for (let x = -off; x < W + step; x += step) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, H);
+                    ctx.stroke();
+                }
+                for (let y = -off; y < H + step; y += step) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(W, y);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+
+            function frame(t) {
+                const elapsed = (t - t0) / 1000;
+                pulseT += 0.018;
+
+                if (W > 1 && H > 1) {
+                    ctx.fillStyle = '#06060c';
+                    ctx.fillRect(0, 0, W, H);
+                    drawGrid(elapsed);
+
+                    edges.forEach((e, ei) => {
+                        const A = nodes[e.a];
+                        const B = nodes[e.b];
+                        const alpha = 0.07 + e.w * 0.14 + Math.sin(pulseT + ei * 0.4) * 0.028;
+                        const g = ctx.createLinearGradient(A.x, A.y, B.x, B.y);
+                        g.addColorStop(0, 'rgba(45,212,255,' + alpha + ')');
+                        g.addColorStop(0.5, 'rgba(180,124,255,' + (alpha * 1.15) + ')');
+                        g.addColorStop(1, 'rgba(45,212,255,' + alpha + ')');
+                        ctx.strokeStyle = g;
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(A.x, A.y);
+                        ctx.lineTo(B.x, B.y);
+                        ctx.stroke();
+                    });
+
+                    packets.forEach(p => {
+                        if (!edges.length) return;
+                        const e = edges[p.edge];
+                        if (!e) return;
+                        const A = nodes[e.a];
+                        const B = nodes[e.b];
+                        p.t += p.speed * 0.007;
+                        if (p.t > 1) {
+                            p.t = 0;
+                            p.edge = Math.floor(Math.random() * edges.length);
+                        }
+                        const px = A.x + (B.x - A.x) * p.t;
+                        const py = A.y + (B.y - A.y) * p.t;
+                        ctx.beginPath();
+                        ctx.arc(px, py, 2.8, 0, Math.PI * 2);
+                        ctx.fillStyle = 'rgba(45, 212, 255, 0.95)';
+                        ctx.shadowColor = '#2dd4ff';
+                        ctx.shadowBlur = 14;
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+                    });
+
+                    nodes.forEach(n => {
+                        const r = 3.5 + Math.sin(pulseT * 2.2 + n.phase) * 1.1;
+                        ctx.beginPath();
+                        ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+                        ctx.fillStyle = 'rgba(236, 236, 244, 0.82)';
+                        ctx.fill();
+                        ctx.strokeStyle = 'rgba(45, 212, 255, 0.45)';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                    });
+
+                    const scanY = (elapsed * 70) % (H + 100) - 50;
+                    const grad = ctx.createLinearGradient(0, scanY - 36, 0, scanY + 36);
+                    grad.addColorStop(0, 'transparent');
+                    grad.addColorStop(0.5, 'rgba(45, 212, 255, 0.038)');
+                    grad.addColorStop(1, 'transparent');
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(0, scanY - 36, W, 72);
+                }
+
+                requestAnimationFrame(frame);
+            }
+
+            requestAnimationFrame(frame);
+        })();
+    </script>
+</body>
+
+</html>
