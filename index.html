@@ -213,19 +213,22 @@
             pointer-events: none;
         }
 
-        /* Intro video — play/pause + sound (fixed: stays on screen while scrolling) */
+        /* Intro video — play/pause + sound (fixed, outside #hero in DOM so overflow:hidden doesn’t clip hits) */
         .hero-video-controls {
             position: fixed;
-            left: 50%;
+            right: max(1rem, calc(env(safe-area-inset-right, 0px) + 0.5rem));
+            left: auto;
             bottom: max(1.1rem, calc(env(safe-area-inset-bottom, 0px) + 0.65rem));
-            transform: translateX(-50%);
-            z-index: 99;
+            transform: none;
+            z-index: 150;
             display: flex;
             flex-wrap: wrap;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-end;
             gap: 0.55rem;
             pointer-events: auto;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .hero-vid-btn {
@@ -244,6 +247,10 @@
             -webkit-backdrop-filter: blur(14px);
             box-shadow: var(--shadow-soft);
             transition: border-color 0.2s, background 0.2s, color 0.2s, transform 0.15s;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            position: relative;
+            z-index: 1;
         }
 
         .hero-vid-btn:hover {
@@ -1053,6 +1060,40 @@
             color: var(--violet);
         }
 
+        /* One flex child: avoids broken wraps when body is plain text + inline tags on narrow screens */
+        .exp-point-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .exp-features-intro {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+        }
+
+        .exp-feature-list {
+            margin: 0;
+            padding: 0 0 0 1.15rem;
+            list-style-type: disc;
+            color: var(--text-secondary);
+        }
+
+        .exp-feature-list li {
+            margin-bottom: 0.45rem;
+            line-height: 1.55;
+            padding-right: 0.25rem;
+        }
+
+        .exp-feature-list li:last-child {
+            margin-bottom: 0;
+        }
+
+        .exp-feature-title {
+            color: var(--cyan);
+            font-weight: 600;
+        }
+
         .exp-outcome {
             display: inline-flex;
             align-items: center;
@@ -1803,6 +1844,10 @@
                 margin-bottom: 3rem;
             }
 
+            .exp-feature-list {
+                padding-left: 1rem;
+            }
+
             .timeline::before {
                 left: 6px;
             }
@@ -1832,6 +1877,16 @@
 
             .hero-cta .btn {
                 width: 100%;
+            }
+
+            /* Less dead space above footer on phones (section padding + footer was stacking) */
+            #contact {
+                padding-bottom: clamp(2rem, 7vw, 3rem);
+            }
+
+            footer {
+                padding-top: 1.65rem;
+                padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
             }
         }
 
@@ -2182,31 +2237,32 @@
             <canvas id="hero-canvas"></canvas>
         </div>
 
-        <div class="hero-video-controls" role="group" aria-label="Intro background video">
-            <button type="button" class="hero-vid-btn is-playing" id="hero-vid-play" aria-label="Pause intro video"
-                title="Play / pause">
-                <svg class="hero-vid-ic-play" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M8 5v14l11-7L8 5z" />
-                </svg>
-                <svg class="hero-vid-ic-pause" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M6 5h4v14H6V5zm8 0h4v14h-4V5z" />
-                </svg>
-            </button>
-            <button type="button" class="hero-vid-btn" id="hero-vid-sound" aria-label="Unmute intro video"
-                title="Sound on / off">
-                <svg class="hero-vid-ic-muted" viewBox="0 0 24 24" aria-hidden="true">
-                    <path
-                        d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z" />
-                </svg>
-                <svg class="hero-vid-ic-sound" viewBox="0 0 24 24" aria-hidden="true">
-                    <path
-                        d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
-                </svg>
-            </button>
-        </div>
-
         <div class="hero-scroll">Scroll</div>
     </section>
+
+    <!-- Fixed video controls: outside #hero so parent overflow:hidden never clips pointer events when scrolled -->
+    <div class="hero-video-controls" role="group" aria-label="Intro background video">
+        <button type="button" class="hero-vid-btn is-playing" id="hero-vid-play" aria-label="Pause intro video"
+            title="Play / pause">
+            <svg class="hero-vid-ic-play" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M8 5v14l11-7L8 5z" />
+            </svg>
+            <svg class="hero-vid-ic-pause" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 5h4v14H6V5zm8 0h4v14h-4V5z" />
+            </svg>
+        </button>
+        <button type="button" class="hero-vid-btn" id="hero-vid-sound" aria-label="Unmute intro video"
+            title="Sound on / off">
+            <svg class="hero-vid-ic-muted" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                    d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z" />
+            </svg>
+            <svg class="hero-vid-ic-sound" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                    d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
+            </svg>
+        </button>
+    </div>
 
     <!-- SPOTLIGHT: name & CTAs (global neural bg behind entire site) -->
     <section id="spotlight" aria-labelledby="spotlight-title">
@@ -2422,7 +2478,7 @@
                         style="background:var(--violet);box-shadow:0 0 20px rgba(157,78,221,0.6);animation:pulse-glow 2s infinite;">
                     </div>
                     <div class="exp-header">
-                        <div class="exp-period" style="color:var(--violet);">2024 – Present · Side Venture</div>
+                        <div class="exp-period" style="color:var(--violet);">Feb 2026 – Present · Side Venture</div>
                         <div class="exp-role">Founder &amp; CEO</div>
                         <div class="exp-company"><a href="https://hirevanta.in" target="_blank"
                                 style="color:var(--amber);text-decoration:none;border-bottom:1px solid rgba(255,179,71,0.3);transition:border-color 0.2s;"
@@ -2434,10 +2490,17 @@
                         <div class="exp-point violet-arrow">Building an AI-powered CareerTech SaaS platform helping
                             Indian job seekers optimize resumes and improve interview readiness through intelligent
                             automation — powered by Next.js, Firebase, and Google Gemini AI.</div>
-                        <div class="exp-point violet-arrow">Flagship features include the <strong
-                                style="color:var(--cyan);">Career Capital Score™</strong>, <strong
-                                style="color:var(--cyan);">Skill Liquidity Heatmap™</strong>, Salary Negotiation
-                            Simulator, and AI-driven Path Comparator.</div>
+                        <div class="exp-point violet-arrow">
+                            <div class="exp-point-content">
+                                <span class="exp-features-intro">Flagship features include</span>
+                                <ul class="exp-feature-list">
+                                    <li><strong class="exp-feature-title">Career Capital Score™</strong></li>
+                                    <li><strong class="exp-feature-title">Skill Liquidity Heatmap™</strong></li>
+                                    <li>Salary Negotiation Simulator</li>
+                                    <li>AI-driven Path Comparator</li>
+                                </ul>
+                            </div>
+                        </div>
                         <div class="exp-point violet-arrow">Designed a freemium monetization model (Free / Pro / Pro+)
                             with Razorpay integration, and applied for the iCreate NIDHI PRAYAS grant (₹10L).</div>
                         <div class="exp-point violet-arrow">Built and iterated on the full investor pitch deck,
@@ -2871,22 +2934,50 @@
         }
 
         /** Any click on the page (after button handlers run) can unmute — browsers block unmuted autoplay */
-        function onHeroDocumentClickUnmute() {
+        function onHeroDocumentClickUnmute(ev) {
+            if (ev.target.closest && ev.target.closest('.hero-video-controls')) return;
             if (!heroBgVideo || heroUserChoseMute || !heroBgVideo.muted) return;
             heroBgVideo.muted = false;
             heroBgVideo.play().catch(() => {});
             syncHeroVideoButtons();
         }
 
+        /**
+         * pointerup handles mouse + pen + touch (works on desktop and modern mobile).
+         * skipNextClick drops the redundant synthetic click after pointerup (keyboard-only uses click).
+         */
+        function bindHeroControlButton(el, fn) {
+            if (!el) return;
+            let skipNextClick = false;
+            let skipTimer = 0;
+            el.addEventListener('pointerup', (e) => {
+                if (e.pointerType !== 'mouse' && e.pointerType !== 'pen' && e.pointerType !== 'touch') return;
+                if (e.button !== 0) return;
+                skipNextClick = true;
+                clearTimeout(skipTimer);
+                skipTimer = setTimeout(() => { skipNextClick = false; }, 800);
+                fn(e);
+            });
+            el.addEventListener('click', (e) => {
+                if (skipNextClick) {
+                    skipNextClick = false;
+                    clearTimeout(skipTimer);
+                    e.preventDefault();
+                    return;
+                }
+                fn(e);
+            });
+        }
+
         if (heroVidPlay && heroBgVideo) {
-            heroVidPlay.addEventListener('click', () => {
+            bindHeroControlButton(heroVidPlay, () => {
                 if (heroBgVideo.paused) heroBgVideo.play().catch(() => {});
                 else heroBgVideo.pause();
                 syncHeroVideoButtons();
             });
         }
         if (heroVidSound && heroBgVideo) {
-            heroVidSound.addEventListener('click', () => {
+            bindHeroControlButton(heroVidSound, () => {
                 heroBgVideo.muted = !heroBgVideo.muted;
                 heroUserChoseMute = heroBgVideo.muted;
                 syncHeroVideoButtons();
@@ -3076,6 +3167,9 @@
             });
             window.addEventListener('resize', () => {
                 if (window.innerWidth > NAV_DRAWER_MAX) closeNav();
+            });
+            window.addEventListener('orientationchange', () => {
+                setTimeout(closeNav, 150);
             });
             document.addEventListener('keydown', e => {
                 if (e.key === 'Escape') closeNav();
